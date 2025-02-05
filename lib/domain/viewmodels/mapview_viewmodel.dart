@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:geoapp/data/models/geojsondata.dart';
+import 'package:geoapp/data/models/geolinestring.dart';
+import 'package:geoapp/data/models/geomultilinestring.dart';
 import 'package:geoapp/data/models/geomultipolygon.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
+import 'package:geoapp/data/models/point.dart';
 import 'package:geoapp/domain/utils/geojson_loader.dart';
 
 class GeoJsonViewModel extends ChangeNotifier {
   List<List<Offset>> polygons = [];
+  List<List<Offset>> lines = [];
+  List<List<Offset>> points = [];
 
   Future<void> loadGeoJson(String filePath, Size size) async {
-    // Загружаем GeoJSON данные из файла
     GeoJsonData geoJsonData = await GeoJsonLoader.loadFromFile(filePath);
 
-    // Определяем границы координат
     double minLon = double.infinity, maxLon = double.negativeInfinity;
     double minLat = double.infinity, maxLat = double.negativeInfinity;
 
-    // Находим минимальные и максимальные значения для долготы и широты
+    // Преобразуем координаты для каждого геометрического типа
     for (var feature in geoJsonData.features) {
       var geometry = feature.geometry;
 
@@ -39,11 +42,36 @@ class GeoJsonViewModel extends ChangeNotifier {
             }
           }
         }
+      } else if (geometry is GeoLineString) {
+        for (var point in geometry.points) {
+          minLon = point.longitude < minLon ? point.longitude : minLon;
+          maxLon = point.longitude > maxLon ? point.longitude : maxLon;
+          minLat = point.latitude < minLat ? point.latitude : minLat;
+          maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+        }
+      } else if (geometry is GeoMultiLineString) {
+        for (var line in geometry.lineStrings) {
+          for (var point in line.points) {
+            minLon = point.longitude < minLon ? point.longitude : minLon;
+            maxLon = point.longitude > maxLon ? point.longitude : maxLon;
+            minLat = point.latitude < minLat ? point.latitude : minLat;
+            maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+          }
+        }
+      } else if (geometry is GeoPoint) {
+        var lat = geometry.latitude;
+        var lon = geometry.longitude;
+        minLon = lon < minLon ? lon : minLon;
+        maxLon = lon > maxLon ? lon : maxLon;
+        minLat = lat < minLat ? lat : minLat;
+        maxLat = lat > maxLat ? lat : maxLat;
       }
     }
 
-    // Преобразуем координаты в пиксели
-    polygons = <List<Offset>>[];
+    // Преобразуем географические координаты в пиксели для каждого типа
+    polygons.clear();
+    lines.clear();
+    points.clear();
 
     for (var feature in geoJsonData.features) {
       var geometry = feature.geometry;
@@ -64,24 +92,37 @@ class GeoJsonViewModel extends ChangeNotifier {
             polygons.add(convertedRing);
           }
         }
+      } else if (geometry is GeoLineString) {
+        List<Offset> convertedLine = geometry.points.map((point) {
+          return geoToPixel(point.longitude, point.latitude, minLon, maxLon, minLat, maxLat, size);
+        }).toList();
+        lines.add(convertedLine);
+      } else if (geometry is GeoMultiLineString) {
+        for (var line in geometry.lineStrings) {
+          List<Offset> convertedLine = line.points.map((point) {
+            return geoToPixel(point.longitude, point.latitude, minLon, maxLon, minLat, maxLat, size);
+          }).toList();
+          lines.add(convertedLine);
+        }
+      } else if (geometry is GeoPoint) {
+        List<Offset> convertedPoint = [
+          geoToPixel(geometry.longitude, geometry.latitude, minLon, maxLon, minLat, maxLat, size)
+        ];
+        points.add(convertedPoint);
       }
     }
 
     notifyListeners();
   }
 
-// Преобразование географических координат в пиксели с учетом размера виджета
-  Offset geoToPixel(double lon, double lat, double minLon, double maxLon, double minLat, double maxLat, Size size) {
-    // Находим масштабирование по ширине и высоте
-    double scaleX = size.width / (maxLon - minLon);
-    double scaleY = size.height / (maxLat - minLat);
+Offset geoToPixel(double lon, double lat, double minLon, double maxLon, double minLat, double maxLat, Size size) {
+  double scaleX = size.width / (maxLon - minLon);
+  double scaleY = size.height / (maxLat - minLat);
+  double scale = scaleX < scaleY ? scaleX : scaleY; // Нужно брать минимальный масштаб, чтобы сохранить пропорции
 
-    // Поддерживаем пропорции карты
-    double scale = scaleX < scaleY ? scaleX : scaleY;
+  double x = (lon - minLon) * scale;
+  double y = (maxLat - lat) * scale; // Инвертируем, чтобы карта не была перевернутой
 
-    double x = (lon - minLon) * scale;
-    double y = (1 - (lat - minLat) / (maxLat - minLat)) * size.height * scale;
-
-    return Offset(x, y);
-  }
+  return Offset(x, y);
+}
 }
