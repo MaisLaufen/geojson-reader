@@ -13,8 +13,8 @@ class GeoJsonScreen extends StatefulWidget {
 }
 
 class GeoJsonScreenState extends State<GeoJsonScreen> {
-   late TransformationController _transformationController;
-  List<Color> _colors = []; // Инициализируем пустым списком
+  late TransformationController _transformationController;
+  List<Color> _colors = [];
   late double _mapWidth;
   late double _mapHeight;
 
@@ -25,10 +25,10 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final viewModel = Provider.of<GeoJsonViewModel>(context, listen: false);
       viewModel.loadGeoJson(
-        'C://Users//MaisLaufen//source//geoapp//lib//test_data//world.geojson',
-        const Size(800, 250),
+        'C://Users//MaisLaufen//source//geoapp//lib//test_data//stud_area.geojson',
+        const Size(1000, 1000),
       ).then((_) {
-        _generateColors(viewModel.polygons.length);
+        _generateColors(viewModel.polygons.length + viewModel.lines.length + viewModel.points.length);
         _updateMapSize(viewModel);
       });
     });
@@ -43,34 +43,30 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
     });
   }
 
-void _updateMapSize(GeoJsonViewModel viewModel) {
-  double minLon = double.infinity, maxLon = double.negativeInfinity;
-  double minLat = double.infinity, maxLat = double.negativeInfinity;
+  void _updateMapSize(GeoJsonViewModel viewModel) {
+    double minLon = double.infinity, maxLon = double.negativeInfinity;
+    double minLat = double.infinity, maxLat = double.negativeInfinity;
 
-  // Извлекаем границы, которые мы вычисляли в loadGeoJson
-  for (var feature in viewModel.polygons) {
-    // Каждый feature — это список точек (List<Offset>), которые нужно обрабатывать.
-    for (var point in feature) {
-      // Для каждой точки получаем координаты (dx — долгота, dy — широта)
-      double lon = point.dx;
-      double lat = point.dy;
+    for (var feature in viewModel.polygons) {
+      for (var point in feature) {
+        double lon = point.dx;
+        double lat = point.dy;
 
-      // Обновляем минимальные и максимальные значения для долготы и широты
-      minLon = lon < minLon ? lon : minLon;
-      maxLon = lon > maxLon ? lon : maxLon;
-      minLat = lat < minLat ? lat : minLat;
-      maxLat = lat > maxLat ? lat : maxLat;
+        minLon = lon < minLon ? lon : minLon;
+        maxLon = lon > maxLon ? lon : maxLon;
+        minLat = lat < minLat ? lat : minLat;
+        maxLat = lat > maxLat ? lat : maxLat;
+      }
     }
+
+    final widthRatio = maxLon - minLon;
+    final heightRatio = maxLat - minLat;
+
+    setState(() {
+      _mapWidth = widthRatio;
+      _mapHeight = heightRatio;
+    });
   }
-
-  final widthRatio = maxLon - minLon;
-  final heightRatio = maxLat - minLat;
-
-  setState(() {
-    _mapWidth = widthRatio;
-    _mapHeight = heightRatio;
-  });
-}
 
   @override
   Widget build(BuildContext context) {
@@ -79,13 +75,15 @@ void _updateMapSize(GeoJsonViewModel viewModel) {
       body: Center(
         child: Consumer<GeoJsonViewModel>(
           builder: (context, viewModel, child) {
-            if (viewModel.polygons.isEmpty) {
+            if (viewModel.polygons.isEmpty &&
+                viewModel.lines.isEmpty &&
+                viewModel.points.isEmpty) {
               return const CircularProgressIndicator();
             }
 
             return Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.black, width: 2), // Граница черного цвета
+                border: Border.all(color: Colors.black, width: 2)
               ),
               width: double.infinity,
               height: double.infinity,
@@ -95,8 +93,13 @@ void _updateMapSize(GeoJsonViewModel viewModel) {
                 minScale: 0.5,
                 maxScale: 5.0,
                 child: CustomPaint(
-                  size: Size(_mapWidth, _mapHeight), // Размеры карты
-                  painter: GeoJsonPainter(viewModel.polygons, _colors),
+                  size: Size(_mapWidth, _mapHeight),
+                  painter: GeoJsonPainter(
+                    viewModel.polygons, 
+                    viewModel.lines, 
+                    viewModel.points, 
+                    _colors
+                  ),
                 ),
               ),
             );
