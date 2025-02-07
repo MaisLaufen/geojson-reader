@@ -1,8 +1,9 @@
+import 'package:geoapp/data/models/geocoordinate.dart';
 import 'package:geoapp/data/models/geometry.dart';
-import 'package:geoapp/data/models/point.dart';
 
 class GeoLineString extends Geometry {
-  final List<GeoPoint> points;
+  final List<GeoCoordinates> points;
+  final String name;
 
-  GeoLineString(this.points) : super('LineString');
+  GeoLineString(this.points, this.name) : super('LineString');
 }

@@ -2,7 +2,8 @@ import 'package:geoapp/data/models/geometry.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
 
 class GeoMultiPolygon extends Geometry {
-  List<GeoPolygon> polygons;
+  final List<GeoPolygon> polygons;
+  final String name;
 
-  GeoMultiPolygon(this.polygons) : super("MultiPolygon");
+  GeoMultiPolygon(this.polygons, this.name) : super("MultiPolygon");
 }

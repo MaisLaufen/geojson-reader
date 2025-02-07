@@ -1,8 +1,9 @@
+import 'package:geoapp/data/models/geocoordinate.dart';
 import 'package:geoapp/data/models/geometry.dart';
-import 'package:geoapp/data/models/point.dart';
 
 class GeoPolygon extends Geometry {
-  final List<List<GeoPoint>> coordinates;
+  final List<List<GeoCoordinates>> coordinates;
+  final String name;
 
-  GeoPolygon(this.coordinates) : super('Polygon');
+  GeoPolygon(this.coordinates, this.name) : super('Polygon');
 }
