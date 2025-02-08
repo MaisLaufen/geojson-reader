@@ -41,6 +41,10 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
             position += details.focalPointDelta;
           });
         },
+         onTapDown: (TapDownDetails details) {
+          Offset tapPosition = (details.localPosition - position) / scale;
+          _detectFeatureAt(tapPosition);
+  },
         child: Stack(
           children: [
             CustomPaint(
