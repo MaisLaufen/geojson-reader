@@ -1,100 +1,123 @@
 import 'package:flutter/material.dart';
 import 'package:geoapp/data/models/geocoordinate.dart';
+import 'package:geoapp/data/models/geofeature.dart';
 import 'package:geoapp/data/models/geojsondata.dart';
 import 'package:geoapp/data/models/geolinestring.dart';
 import 'package:geoapp/data/models/geomultilinestring.dart';
 import 'package:geoapp/data/models/geomultipolygon.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
 import 'package:geoapp/data/models/point.dart';
+import 'package:geoapp/domain/entities/map_layer.dart';
 import 'package:geoapp/domain/utils/geojson_loader.dart';
 
-double minLon = double.maxFinite, maxLon = double.minPositive;
-double minLat = double.maxFinite, maxLat = double.minPositive;
-
 class GeoJsonViewModel extends ChangeNotifier {
-  List<List<Offset>> polygons = [];
-  List<List<Offset>> lines = [];
-  List<Offset> points = [];
+  List<GeoJsonLayer> layers = [];
+
+  double centerLon = 0.0, centerLat = 0.0;
+  double maxDelta = 1.0;
+
+  // Условные глобальные координаты (центр карты мира)
+  final double worldCenterLon = 0.0; // Центр долгот (экватор)
+  final double worldCenterLat = 0.0; // Центр широт (нулевой меридиан)
 
   Future<void> loadGeoJson(String filePath, Size size) async {
     GeoJsonData geoJsonData = await GeoJsonLoader.loadFromFile(filePath);
 
-    // Определение границ координат
+    // Собираем все координаты
+    List<GeoCoordinates> allCoordinates = [];
     for (var feature in geoJsonData.features) {
       var geometry = feature.geometry;
-
       if (geometry is GeoPolygon) {
-        _updateBounds(geometry.coordinates.expand((ring) => ring));
+        allCoordinates.addAll(geometry.coordinates.expand((ring) => ring));
       } else if (geometry is GeoMultiPolygon) {
         for (var polygon in geometry.polygons) {
-          _updateBounds(polygon.coordinates.expand((ring) => ring));
+          allCoordinates.addAll(polygon.coordinates.expand((ring) => ring));
         }
       } else if (geometry is GeoLineString) {
-        _updateBounds(geometry.points);
+        allCoordinates.addAll(geometry.points);
       } else if (geometry is GeoMultiLineString) {
         for (var line in geometry.lineStrings) {
-          _updateBounds(line.points);
+          allCoordinates.addAll(line.points);
         }
       } else if (geometry is GeoPoint) {
-        _updateBounds([geometry.coordinates]);
+        allCoordinates.add(geometry.coordinates);
       }
     }
 
-    // Преобразование координат в пиксели
-    polygons.clear();
-    lines.clear();
-    points.clear();
+    if (allCoordinates.isEmpty) return;
 
-    for (var feature in geoJsonData.features) {
-      var geometry = feature.geometry;
+    // Вычисляем центр для этого слоя
+    double tempCenterLon = allCoordinates.map((c) => c.longitude).reduce((a, b) => a + b) / allCoordinates.length;
+    double tempCenterLat = allCoordinates.map((c) => c.latitude).reduce((a, b) => a + b) / allCoordinates.length;
 
-      if (geometry is GeoPolygon) {
-        for (var ring in geometry.coordinates) {
-          polygons.add(_convertToPixels(ring, minLon, maxLon, minLat, maxLat, size));
-        }
-      } else if (geometry is GeoMultiPolygon) {
-        for (var polygon in geometry.polygons) {
-          for (var ring in polygon.coordinates) {
-            polygons.add(_convertToPixels(ring, minLon, maxLon, minLat, maxLat, size));
-          }
-        }
-      } else if (geometry is GeoLineString) {
-        lines.add(_convertToPixels(geometry.points, minLon, maxLon, minLat, maxLat, size));
-      } else if (geometry is GeoMultiLineString) {
-        for (var line in geometry.lineStrings) {
-          lines.add(_convertToPixels(line.points, minLon, maxLon, minLat, maxLat, size));
-        }
-      } else if (geometry is GeoPoint) {
-        points.add(geoToPixel(geometry.coordinates.longitude, geometry.coordinates.latitude, 
-            minLon, maxLon, minLat, maxLat, size));
-      }
-    }
+    // Вычисляем максимальное отклонение от центра для масштаба
+    double tempMaxDelta = allCoordinates
+        .map((c) => (c.longitude - tempCenterLon).abs().clamp(0.0, (c.latitude - tempCenterLat).abs()))
+        .reduce((a, b) => a > b ? a : b);
+    if (tempMaxDelta == 0) tempMaxDelta = 1.0; // Предотвращаем деление на ноль
+
+    // Нормализуем масштаб относительно глобальных координат (центр карты мира)
+    var layer = _convertGeoJsonToLayer(geoJsonData.features, size, tempCenterLon, tempCenterLat, tempMaxDelta);
+
+    // Добавляем слой в коллекцию
+    layers.add(layer);
+
+    // Обновляем глобальные параметры центра и maxDelta для всего набора слоев
+    centerLon = tempCenterLon;
+    centerLat = tempCenterLat;
+    maxDelta = tempMaxDelta;
 
     notifyListeners();
   }
 
-  void _updateBounds(Iterable<GeoCoordinates> points) {
-    for (var point in points) {
-      if (point.longitude < minLon) minLon = point.longitude;
-      if (point.longitude > maxLon) maxLon = point.longitude;
-      if (point.latitude < minLat) minLat = point.latitude;
-      if (point.latitude > maxLat) maxLat = point.latitude;
+  GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, Size size, double centerLon, double centerLat, double maxDelta) {
+    List<List<Offset>> polygons = [];
+    List<List<Offset>> lines = [];
+    List<Offset> points = [];
+
+    for (var feature in features) {
+      var geometry = feature.geometry;
+      if (geometry is GeoPolygon) {
+        for (var ring in geometry.coordinates) {
+          polygons.add(_convertToPixels(ring, size, centerLon, centerLat, maxDelta));
+        }
+      } else if (geometry is GeoMultiPolygon) {
+        for (var polygon in geometry.polygons) {
+          for (var ring in polygon.coordinates) {
+            polygons.add(_convertToPixels(ring, size, centerLon, centerLat, maxDelta));
+          }
+        }
+      } else if (geometry is GeoLineString) {
+        lines.add(_convertToPixels(geometry.points, size, centerLon, centerLat, maxDelta));
+      } else if (geometry is GeoMultiLineString) {
+        for (var line in geometry.lineStrings) {
+          lines.add(_convertToPixels(line.points, size, centerLon, centerLat, maxDelta));
+        }
+      } else if (geometry is GeoPoint) {
+        points.add(geoToPixel(geometry.coordinates, size, centerLon, centerLat, maxDelta));
+      }
     }
+
+    return GeoJsonLayer(
+      polygons: polygons,
+      lines: lines,
+      points: points,
+      centerLon: centerLon,
+      centerLat: centerLat,
+      maxDelta: maxDelta,
+    );
   }
 
-  List<Offset> _convertToPixels(List<GeoCoordinates> coordinates, 
-      double minLon, double maxLon, double minLat, double maxLat, Size size) {
-    return coordinates.map((point) => geoToPixel(
-        point.longitude, point.latitude, minLon, maxLon, minLat, maxLat, size)).toList();
+  List<Offset> _convertToPixels(List<GeoCoordinates> coordinates, Size size, double centerLon, double centerLat, double maxDelta) {
+    return coordinates.map((c) => geoToPixel(c, size, centerLon, centerLat, maxDelta)).toList();
   }
 
-  Offset geoToPixel(double lon, double lat, double minLon, double maxLon, double minLat, double maxLat, Size size) {
-    double scaleX = size.width / (maxLon - minLon);
-    double scaleY = size.height / (maxLat - minLat);
-    double scale = scaleX < scaleY ? scaleX : scaleY; // Нужно брать минимальный масштаб, чтобы сохранить пропорции
+  Offset geoToPixel(GeoCoordinates coord, Size size, double centerLon, double centerLat, double maxDelta) {
+    // Масштабируем относительно глобального масштаба
 
-    double x = (lon - minLon) * scale;
-    double y = (maxLat - lat) * scale; // Инвертируем, чтобы карта не была перевернутой
+    // Переводим координаты относительно центра карты мира, чтобы они были точно в том месте
+    double x = (coord.longitude - worldCenterLon)  + size.width / 2;
+    double y = (worldCenterLat - coord.latitude)  + size.height / 2;
 
     return Offset(x, y);
   }
