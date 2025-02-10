@@ -1,16 +1,15 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:geoapp/domain/entities/map_layer.dart';
+import 'package:geoapp/domain/entities/map_object.dart';
+import 'package:geoapp/presentation/dialogs/feature_dialog.dart';
 
 class GeoJsonMapView extends StatefulWidget {
-  final List<List<Offset>> polygons;
-  final List<List<Offset>> lines;
-  final List<Offset> points;
+  final List<GeoJsonLayer> layers;
 
   const GeoJsonMapView({
     super.key,
-    required this.polygons,
-    required this.lines,
-    required this.points,
+    required this.layers,
   });
 
   @override
@@ -25,8 +24,8 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
   void _onScroll(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
       setState(() {
-        double zoomFactor = event.scrollDelta.dy > 0 ? 0.9 : 1.1; // Уменьшение или увеличение
-        scale = (scale * zoomFactor).clamp(0.5, 5.0);
+        double zoomFactor = event.scrollDelta.dy > 0 ? 0.9 : 1.1;
+        scale = (scale * zoomFactor).clamp(0.001, 100.0);
       });
     }
   }
@@ -34,79 +33,79 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
   @override
   Widget build(BuildContext context) {
     return Listener(
-      onPointerSignal: _onScroll, // Обработка колесика мыши
+      onPointerSignal: _onScroll,
       child: GestureDetector(
         onScaleUpdate: (details) {
           setState(() {
             position += details.focalPointDelta;
           });
         },
-         onTapDown: (TapDownDetails details) {
+        onTapDown: (TapDownDetails details) {
           Offset tapPosition = (details.localPosition - position) / scale;
           _detectFeatureAt(tapPosition);
-  },
+        },
         child: Stack(
           children: [
             CustomPaint(
               size: const Size(1000, 1000),
               painter: GeoJsonPainter(
-                polygons: widget.polygons,
-                lines: widget.lines,
-                points: widget.points,
+                layers: widget.layers,
                 scale: scale,
                 position: position,
               ),
             ),
-            if (selectedFeature != null)
-              Positioned(
-                bottom: 20,
-                left: 20,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  color: Colors.white.withOpacity(0.8),
-                  child: Text(selectedFeature!, style: const TextStyle(fontSize: 16)),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  void _detectFeatureAt(Offset tapPosition) {
-  const double tapTolerance = 10.0;
-  String? feature;
-
-  for (var polygon in widget.polygons) {
-    if (_isPointInsidePolygon(tapPosition, polygon)) {
-      feature = "Polygon";
-      break;
-    }
+  void _showFeatureDialog(MapObject mapObject) {
+    showDialog(
+      context: context,
+      builder: (context) => FeatureDialog(mapObject: mapObject),
+    );
   }
 
-  if (feature == null) {
-    for (var line in widget.lines) {
-      for (int i = 0; i < line.length - 1; i++) {
-        if (_isPointNearLine(tapPosition, line[i], line[i + 1], tapTolerance)) {
-          feature = "Line";
+  void _detectFeatureAt(Offset tapPosition) {
+    const double tapTolerance = 10.0;
+    MapObject? mapObject;
+
+    for (var layer in widget.layers) {
+      for (var polygon in layer.polygons) {
+        if (_isPointInsidePolygon(tapPosition, polygon)) {
+          mapObject = MapObject(type: "Polygon", data: polygon);
           break;
         }
       }
-      if (feature != null) break;
-    }
-  }
 
-  if (feature == null) {
-    for (var point in widget.points) {
-      if ((tapPosition - point).distance < tapTolerance) {
-        feature = "Point";
+      if (mapObject == null) {
+        for (var line in layer.lines) {
+          for (int i = 0; i < line.length - 1; i++) {
+            if (_isPointNearLine(tapPosition, line[i], line[i + 1], tapTolerance)) {
+              mapObject = MapObject(type: "LineString", data: line);
+              break;
+            }
+          }
+          if (mapObject != null) break;
+        }
+      }
+
+      if (mapObject == null) {
+        for (var point in layer.points) {
+          if ((tapPosition - point).distance < tapTolerance) {
+            mapObject = MapObject(type: "Point", data: point);
+            break;
+          }
+        }
+      }
+
+      if (mapObject != null) {
+        _showFeatureDialog(mapObject);
         break;
       }
     }
   }
-
-  setState(() => selectedFeature = feature);
-}
 
   bool _isPointInsidePolygon(Offset point, List<Offset> polygon) {
     bool inside = false;
@@ -132,17 +131,14 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
   }
 }
 
+
 class GeoJsonPainter extends CustomPainter {
-  final List<List<Offset>> polygons;
-  final List<List<Offset>> lines;
-  final List<Offset> points; // Исправлено
+  final List<GeoJsonLayer> layers;
   final double scale;
   final Offset position;
 
   GeoJsonPainter({
-    required this.polygons,
-    required this.lines,
-    required this.points,
+    required this.layers,
     required this.scale,
     required this.position,
   });
@@ -150,7 +146,7 @@ class GeoJsonPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint polygonPaint = Paint()
-      ..color = const Color.fromARGB(255, 255, 243, 131).withAlpha(50)
+      ..color = const Color.fromARGB(255, 47, 137, 255).withAlpha(50)
       ..style = PaintingStyle.fill;
 
     final Paint linePaint = Paint()
@@ -162,31 +158,33 @@ class GeoJsonPainter extends CustomPainter {
       ..color = Colors.green
       ..style = PaintingStyle.fill;
 
-    for (var polygon in polygons) {
-      final path = Path();
-      for (int i = 0; i < polygon.length; i++) {
-        final transformedPoint = (polygon[i] * scale) + position;
-        if (i == 0) {
-          path.moveTo(transformedPoint.dx, transformedPoint.dy);
-        } else {
-          path.lineTo(transformedPoint.dx, transformedPoint.dy);
+    for (var layer in layers) {
+      for (var polygon in layer.polygons) {
+        final path = Path();
+        for (int i = 0; i < polygon.length; i++) {
+          final transformedPoint = (polygon[i] * scale) + position;
+          if (i == 0) {
+            path.moveTo(transformedPoint.dx, transformedPoint.dy);
+          } else {
+            path.lineTo(transformedPoint.dx, transformedPoint.dy);
+          }
+        }
+        path.close();
+        canvas.drawPath(path, polygonPaint);
+      }
+
+      for (var line in layer.lines) {
+        for (int i = 0; i < line.length - 1; i++) {
+          final start = (line[i] * scale) + position;
+          final end = (line[i + 1] * scale) + position;
+          canvas.drawLine(start, end, linePaint);
         }
       }
-      path.close();
-      canvas.drawPath(path, polygonPaint);
-    }
 
-    for (var line in lines) {
-      for (int i = 0; i < line.length - 1; i++) {
-        final start = (line[i] * scale) + position;
-        final end = (line[i + 1] * scale) + position;
-        canvas.drawLine(start, end, linePaint);
+      for (var point in layer.points) {
+        final transformedPoint = (point * scale) + position;
+        canvas.drawCircle(transformedPoint, 5.0, pointPaint);
       }
-    }
-
-    for (var point in points) { // Исправлено
-      final transformedPoint = (point * scale) + position;
-      canvas.drawCircle(transformedPoint, 5.0, pointPaint);
     }
   }
 

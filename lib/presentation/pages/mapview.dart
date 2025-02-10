@@ -20,9 +20,17 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final viewModel = Provider.of<GeoJsonViewModel>(context, listen: false);
       viewModel.loadGeoJson(
-        'C://Users//MaisLaufen//source//geoapp//lib//test_data//stud_area.geojson',
-        const Size(1000, 1000),
+        'C://Users//MaisLaufen//source//geoapp//lib//test_data//world.geojson',
+        const Size(1000, 1000)
       );
+      viewModel.loadGeoJson(
+      'C://Users//MaisLaufen//source//geoapp//lib//test_data//uk_la.geojson',
+      const Size(1000, 1000),
+    );
+      viewModel.loadGeoJson(
+      'C://Users//MaisLaufen//source//geoapp//lib//test_data//us_cities.geojson',
+      const Size(1000, 1000),
+    );
     });
   }
 
@@ -33,16 +41,12 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
       body: Center(
         child: Consumer<GeoJsonViewModel>(
           builder: (context, viewModel, child) {
-            if (viewModel.polygons.isEmpty &&
-                viewModel.lines.isEmpty &&
-                viewModel.points.isEmpty) {
+            if (viewModel.layers.isEmpty) {
               return const CircularProgressIndicator();
             }
 
             return GeoJsonMapView(
-              polygons: viewModel.polygons,
-              lines: viewModel.lines,
-              points: viewModel.points,
+              layers: viewModel.layers,
             );
           },
         ),
