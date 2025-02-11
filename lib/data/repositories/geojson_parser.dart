@@ -22,11 +22,10 @@ class GeoJsonParser {
   }
 
   static GeoFeature _parseFeature(Map<String, dynamic> feature) {
-    String type = feature['type'];
     Geometry geometry = _parseGeometry(feature['geometry'] as Map<String, dynamic>);
     Map<String, dynamic> properties = feature['properties'] ?? {};
 
-    return GeoFeature(type: type, geometry: geometry, properties: properties);
+    return GeoFeature(geometry: geometry, properties: properties);
   }
 
   static Geometry _parseGeometry(Map<String, dynamic> geometry) {
