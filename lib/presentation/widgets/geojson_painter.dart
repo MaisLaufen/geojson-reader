@@ -1,8 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:geoapp/data/models/geocoordinate.dart';
 import 'package:geoapp/domain/entities/map_layer.dart';
 import 'package:geoapp/domain/entities/map_object.dart';
 import 'package:geoapp/presentation/dialogs/feature_dialog.dart';
+
+import 'map_drawer.dart';
 
 class GeoJsonMapView extends StatefulWidget {
   final List<GeoJsonLayer> layers;
@@ -17,9 +20,9 @@ class GeoJsonMapView extends StatefulWidget {
 }
 
 class GeoJsonMapViewState extends State<GeoJsonMapView> {
-  double scale = 1.0;
-  Offset position = Offset.zero;
-  String? selectedFeature;
+  double scale = 2.0;
+  Offset position = Offset(-1000, -1000);
+  Offset? cursorPosition;
 
   void _onScroll(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
@@ -30,35 +33,64 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
     }
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerSignal: _onScroll,
-      child: GestureDetector(
-        onScaleUpdate: (details) {
-          setState(() {
-            position += details.focalPointDelta;
-          });
-        },
-        onTapDown: (TapDownDetails details) {
-          Offset tapPosition = (details.localPosition - position) / scale;
-          _detectFeatureAt(tapPosition);
-        },
-        child: Stack(
-          children: [
-            CustomPaint(
-              size: const Size(1000, 1000),
-              painter: GeoJsonPainter(
-                layers: widget.layers,
-                scale: scale,
-                position: position,
+    return Column(
+      children: [
+        Expanded(
+          child: Listener(
+            onPointerSignal: _onScroll,
+            onPointerHover: (event) {
+              setState(() {
+                cursorPosition = event.localPosition;
+              });
+            },
+            child: GestureDetector(
+              onScaleUpdate: (details) {
+                setState(() {
+                  position += details.focalPointDelta;
+                });
+              },
+              onTapDown: (TapDownDetails details) {
+                Offset tapPosition = (details.localPosition - position) / scale;
+                _detectFeatureAt(tapPosition);
+              },
+              child: Stack(
+                children: [
+                  CustomPaint(
+                    size: Size.infinite,
+                    painter: MapDrawer(
+                      layers: widget.layers,
+                      scale: scale,
+                      position: position,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
+        ),
+Container(
+        width: double.infinity,
+        color: Colors.black54,
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          'Scale: ${scale.toStringAsFixed(2)} | ${cursorPosition != null
+              ? 'Lat: ${cursorPosition!.dx.toStringAsFixed(1)}, Lon: ${cursorPosition!.dy.toStringAsFixed(1)}'
+              : 'Cursor: N/A'}',
+          style: const TextStyle(color: Colors.white),
+          textAlign: TextAlign.center,
         ),
       ),
+      ],
     );
   }
+
+  GeoCoordinates pixelToGeo(Offset pixel, Size size) {
+  double longitude = (pixel.dx - size.width / 2) + 0.0;
+  double latitude = 0.0 - (pixel.dy - size.height / 2);
+  return GeoCoordinates(latitude, longitude);
+}
 
   void _showFeatureDialog(MapObject mapObject) {
     showDialog(
@@ -68,10 +100,10 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
   }
 
   void _detectFeatureAt(Offset tapPosition) {
-    const double tapTolerance = 10.0;
+    const double tapTolerance = 2;
     MapObject? mapObject;
 
-    for (var layer in widget.layers) {
+    for (var layer in widget.layers.where((layer) => layer.isVisible)) {
       for (var polygon in layer.polygons) {
         if (_isPointInsidePolygon(tapPosition, polygon)) {
           mapObject = MapObject(type: "Polygon", data: polygon);
@@ -112,7 +144,8 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
     for (int i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
       if ((polygon[i].dy > point.dy) != (polygon[j].dy > point.dy) &&
           point.dx < (polygon[j].dx - polygon[i].dx) * (point.dy - polygon[i].dy) /
-              (polygon[j].dy - polygon[i].dy) + polygon[i].dx) {
+                  (polygon[j].dy - polygon[i].dy) +
+              polygon[i].dx) {
         inside = !inside;
       }
     }
@@ -129,65 +162,4 @@ class GeoJsonMapViewState extends State<GeoJsonMapView> {
     Offset projection = Offset(start.dx + t * (end.dx - start.dx), start.dy + t * (end.dy - start.dy));
     return (point - projection).distance < tolerance;
   }
-}
-
-
-class GeoJsonPainter extends CustomPainter {
-  final List<GeoJsonLayer> layers;
-  final double scale;
-  final Offset position;
-
-  GeoJsonPainter({
-    required this.layers,
-    required this.scale,
-    required this.position,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint polygonPaint = Paint()
-      ..color = const Color.fromARGB(255, 47, 137, 255).withAlpha(50)
-      ..style = PaintingStyle.fill;
-
-    final Paint linePaint = Paint()
-      ..color = Colors.red
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    final Paint pointPaint = Paint()
-      ..color = Colors.green
-      ..style = PaintingStyle.fill;
-
-    for (var layer in layers) {
-      for (var polygon in layer.polygons) {
-        final path = Path();
-        for (int i = 0; i < polygon.length; i++) {
-          final transformedPoint = (polygon[i] * scale) + position;
-          if (i == 0) {
-            path.moveTo(transformedPoint.dx, transformedPoint.dy);
-          } else {
-            path.lineTo(transformedPoint.dx, transformedPoint.dy);
-          }
-        }
-        path.close();
-        canvas.drawPath(path, polygonPaint);
-      }
-
-      for (var line in layer.lines) {
-        for (int i = 0; i < line.length - 1; i++) {
-          final start = (line[i] * scale) + position;
-          final end = (line[i + 1] * scale) + position;
-          canvas.drawLine(start, end, linePaint);
-        }
-      }
-
-      for (var point in layer.points) {
-        final transformedPoint = (point * scale) + position;
-        canvas.drawCircle(transformedPoint, 5.0, pointPaint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
