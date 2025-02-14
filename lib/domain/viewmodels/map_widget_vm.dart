@@ -13,7 +13,8 @@ class GeoJsonMapViewModel {
 
 void onScroll(double scrollDelta, Offset cursorPosition) {
     double zoomFactor = scrollDelta > 0 ? 0.9 : 1.1;
-    double newScale = (scale * zoomFactor).clamp(0.001, 100.0);
+    double newScale = (scale * zoomFactor);//.clamp(0.001, 100.0);
+    // Здесь можно убрать clamp 
 
     // Вычисляем сдвиг
     double dx = cursorPosition.dx - position.dx;
@@ -36,46 +37,51 @@ void onScroll(double scrollDelta, Offset cursorPosition) {
     position += delta;
   }
 
-  void detectFeatureAt(Offset tapPosition, BuildContext context) {
-    const double tapTolerance = 2;
-    MapObject? mapObject;
-    Offset relativePosition = (tapPosition - position) / scale;
+void detectFeatureAt(Offset tapPosition, BuildContext context) {
+  double tapTolerance = 4 / scale;
+  MapObject? mapObject;
+  Offset relativePosition = (tapPosition - position) / scale;
 
-    for (var layer in layers.where((layer) => layer.isVisible)) {
+  for (var layer in layers.where((layer) => layer.isVisible)) {
+    // Сначала проверяем точки
+    if (mapObject == null) {
+      for (var point in layer.points) {
+        if ((relativePosition - point).distance < tapTolerance) {
+          mapObject = MapObject(type: "Point", data: point);
+          break;
+        }
+      }
+    }
+
+    // Затем проверяем линии
+    if (mapObject == null) {
+      for (var line in layer.lines) {
+        for (int i = 0; i < line.length - 1; i++) {
+          if (_isPointNearLine(relativePosition, line[i], line[i + 1], tapTolerance)) {
+            mapObject = MapObject(type: "LineString", data: line);
+            break;
+          }
+        }
+        if (mapObject != null) break;
+      }
+    }
+
+    // И только потом проверяем полигоны
+    if (mapObject == null) {
       for (var polygon in layer.polygons) {
         if (_isPointInsidePolygon(relativePosition, polygon)) {
           mapObject = MapObject(type: "Polygon", data: polygon);
           break;
         }
       }
-      
-      if (mapObject == null) {
-        for (var line in layer.lines) {
-          for (int i = 0; i < line.length - 1; i++) {
-            if (_isPointNearLine(relativePosition, line[i], line[i + 1], tapTolerance)) {
-              mapObject = MapObject(type: "LineString", data: line);
-              break;
-            }
-          }
-          if (mapObject != null) break;
-        }
-      }
+    }
 
-      if (mapObject == null) {
-        for (var point in layer.points) {
-          if ((relativePosition - point).distance < tapTolerance) {
-            mapObject = MapObject(type: "Point", data: point);
-            break;
-          }
-        }
-      }
-
-      if (mapObject != null) {
-        _showFeatureDialog(context, mapObject);
-        break;
-      }
+    if (mapObject != null) {
+      _showFeatureDialog(context, mapObject);
+      break;
     }
   }
+}
 
   void _showFeatureDialog(BuildContext context, MapObject mapObject) {
     showDialog(
