@@ -28,6 +28,7 @@ class MapDrawer extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     for (var layer in layers) {
+      if (layer.isVisible) {
       for (var polygon in layer.polygons) {
         final path = Path();
         for (int i = 0; i < polygon.length; i++) {
@@ -54,6 +55,7 @@ class MapDrawer extends CustomPainter {
         final transformedPoint = (point * scale) + position;
         canvas.drawCircle(transformedPoint, 2.0, pointPaint);
       }
+    }
     }
   }
 
