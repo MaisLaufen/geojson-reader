@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:geoapp/data/models/geocoordinate.dart';
 import 'package:geoapp/data/models/geofeature.dart';
@@ -21,9 +20,36 @@ class GeoJsonViewModel extends ChangeNotifier {
   final double worldCenterLon = 0.0;
   final double worldCenterLat = 0.0;
 
+  Future<void> addLayer(BuildContext context, Size size) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['geojson']);
+    if (result != null && result.files.single.path != null) {
+      String filePath = result.files.single.path!;
+      if (!filePath.endsWith('.geojson')) {
+        _showErrorDialog(context, "Выбранный файл не является GeoJSON.");
+        return;
+      }
+      await loadGeoJson(filePath, size);
+    }
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Ошибка"),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("ОК"))
+        ],
+      ),
+    );
+  }
+
   Future<void> loadGeoJson(String filePath, Size size) async {
     GeoJsonData geoJsonData = await GeoJsonLoader.loadFromFile(filePath);
-    String fileName = filePath.split(Platform.pathSeparator).last.replaceAll('.geojson', '');
+    int lastSlashIndex = filePath.lastIndexOf('/');
+    String fileNameWithExtension = filePath.substring(lastSlashIndex + 1);
+    String fileName = fileNameWithExtension.split('.').first;
     int index = layers.length;
     var layer = _convertGeoJsonToLayer(geoJsonData.features, size, index, fileName);
     layers.add(layer);
