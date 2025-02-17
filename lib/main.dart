@@ -10,6 +10,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => GeoJsonViewModel()),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: GeoJsonScreen(),
       ),
     ),
