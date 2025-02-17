@@ -59,8 +59,8 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
           children: [
             Image.network(
               'https://media.tenor.com/xz0WA5Lg9koAAAAi/shuba-shuba-transparent.gif', // Путь к вашему GIF
-              width: 100, // Установите размеры, которые вам нравятся
-              height: 100,
+              width: 150,
+              height: 150,
             ),
             const SizedBox(height: 16),
             const Text(
@@ -98,20 +98,25 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: viewModel.layers.length,
-                      itemBuilder: (context, index) {
-                        final layer = viewModel.layers[index];
-                        return LayerListItem(
-                          layer: layer,
-                          onToggleVisibility: () => viewModel.toggleLayerVisibility(index),
-                          onRemove: () => viewModel.removeLayer(index),
-                        );
-                      },
-                    ),
-                  ),
+                 Expanded(
+  child: ListView.builder(
+    padding: const EdgeInsets.all(8),
+    itemCount: viewModel.layers.length,
+    itemBuilder: (context, index) {
+      final layer = viewModel.layers[index];
+      return LayerListItem(
+        layer: layer,
+        onToggleVisibility: () => viewModel.toggleLayerVisibility(index),
+        onRemove: () => viewModel.removeLayer(index),
+        onMoveUp: () => viewModel.moveLayerUp(index),
+        onMoveDown: () => viewModel.moveLayerDown(index),
+        isTopLayer: viewModel.isTopLayer(index),
+        isBottomLayer: viewModel.isBottomLayer(index),
+        viewModel: viewModel,
+      );
+    },
+  ),
+),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,

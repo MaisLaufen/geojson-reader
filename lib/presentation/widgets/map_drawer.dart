@@ -14,6 +14,9 @@ class MapDrawer extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    List<GeoJsonLayer> sortedLayers = List.from(layers);
+    sortedLayers.sort((a, b) => a.index.compareTo(b.index));
+
     final Paint polygonPaint = Paint()
       ..color = const Color.fromARGB(153, 64, 142, 210)
       ..style = PaintingStyle.fill;
@@ -27,35 +30,35 @@ class MapDrawer extends CustomPainter {
       ..color = const Color(0xFFF60018)
       ..style = PaintingStyle.fill;
 
-    for (var layer in layers) {
+    for (var layer in sortedLayers) {
       if (layer.isVisible) {
-      for (var polygon in layer.polygons) {
-        final path = Path();
-        for (int i = 0; i < polygon.length; i++) {
-          final transformedPoint = (polygon[i] * scale) + position;
-          if (i == 0) {
-            path.moveTo(transformedPoint.dx, transformedPoint.dy);
-          } else {
-            path.lineTo(transformedPoint.dx, transformedPoint.dy);
+        for (var polygon in layer.polygons) {
+          final path = Path();
+          for (int i = 0; i < polygon.length; i++) {
+            final transformedPoint = (polygon[i] * scale) + position;
+            if (i == 0) {
+              path.moveTo(transformedPoint.dx, transformedPoint.dy);
+            } else {
+              path.lineTo(transformedPoint.dx, transformedPoint.dy);
+            }
+          }
+          path.close();
+          canvas.drawPath(path, polygonPaint);
+        }
+
+        for (var line in layer.lines) {
+          for (int i = 0; i < line.length - 1; i++) {
+            final start = (line[i] * scale) + position;
+            final end = (line[i + 1] * scale) + position;
+            canvas.drawLine(start, end, linePaint);
           }
         }
-        path.close();
-        canvas.drawPath(path, polygonPaint);
-      }
 
-      for (var line in layer.lines) {
-        for (int i = 0; i < line.length - 1; i++) {
-          final start = (line[i] * scale) + position;
-          final end = (line[i + 1] * scale) + position;
-          canvas.drawLine(start, end, linePaint);
+        for (var point in layer.points) {
+          final transformedPoint = (point * scale) + position;
+          canvas.drawCircle(transformedPoint, 2.0, pointPaint);
         }
       }
-
-      for (var point in layer.points) {
-        final transformedPoint = (point * scale) + position;
-        canvas.drawCircle(transformedPoint, 2.0, pointPaint);
-      }
-    }
     }
   }
 

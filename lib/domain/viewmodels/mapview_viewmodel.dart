@@ -10,6 +10,7 @@ import 'package:geoapp/data/models/geopolygon.dart';
 import 'package:geoapp/data/models/point.dart';
 import 'package:geoapp/domain/entities/map_layer.dart';
 import 'package:geoapp/domain/utils/geojson_loader.dart';
+import 'package:geoapp/presentation/dialogs/rename_layer_dialog.dart';
 
 class GeoJsonViewModel extends ChangeNotifier {
   List<GeoJsonLayer> layers = [];
@@ -58,6 +59,39 @@ class GeoJsonViewModel extends ChangeNotifier {
       layers[index].isVisible = !layers[index].isVisible;
       notifyListeners();
     }
+  }
+
+  Future<void> renameLayer(BuildContext context, int index) async {
+    if (index >= 0 && index < layers.length) {
+      String? newName = await showRenameDialog(context, layers[index].name);
+      if (newName != null && newName.isNotEmpty) {
+        layers[index].name = newName;
+        notifyListeners();
+      }
+    }
+  }
+  void moveLayerUp(int index) {
+    if (index > 0) {
+      GeoJsonLayer layer = layers.removeAt(index);
+      layers.insert(index - 1, layer);
+      notifyListeners();
+    }
+  }
+
+  void moveLayerDown(int index) {
+    if (index < layers.length - 1) {
+      GeoJsonLayer layer = layers.removeAt(index);
+      layers.insert(index + 1, layer);
+      notifyListeners();
+    }
+  }
+
+  bool isTopLayer(int index) {
+    return index == 0;
+  }
+
+  bool isBottomLayer(int index) {
+    return index == layers.length - 1;
   }
 
   GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, int index, String name) {
