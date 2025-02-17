@@ -14,6 +14,7 @@ class GeoJsonMapInfo extends StatelessWidget {
       builder: (context, cursorPosition, child) {
         return Container(
           width: double.infinity,
+          height: 35,
           color: Colors.black54,
           padding: const EdgeInsets.all(8.0),
           child: Text(

@@ -20,38 +20,27 @@ class GeoJsonViewModel extends ChangeNotifier {
   final double worldCenterLon = 0.0;
   final double worldCenterLat = 0.0;
 
-  Future<void> addLayer(BuildContext context, Size size) async {
+  final ValueNotifier<String?> errorMessage = ValueNotifier(null);
+
+  Future<void> addLayer() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['geojson']);
     if (result != null && result.files.single.path != null) {
       String filePath = result.files.single.path!;
       if (!filePath.endsWith('.geojson')) {
-        _showErrorDialog(context, "Выбранный файл не является GeoJSON.");
+        errorMessage.value = "Выбранный файл не является GeoJSON.";
         return;
       }
-      await loadGeoJson(filePath, size);
+      await loadGeoJson(filePath);
     }
   }
 
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Ошибка"),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("ОК"))
-        ],
-      ),
-    );
-  }
-
-  Future<void> loadGeoJson(String filePath, Size size) async {
+  Future<void> loadGeoJson(String filePath) async {
     GeoJsonData geoJsonData = await GeoJsonLoader.loadFromFile(filePath);
-    int lastSlashIndex = filePath.lastIndexOf('/');
+    int lastSlashIndex = filePath.lastIndexOf("\\");
     String fileNameWithExtension = filePath.substring(lastSlashIndex + 1);
     String fileName = fileNameWithExtension.split('.').first;
     int index = layers.length;
-    var layer = _convertGeoJsonToLayer(geoJsonData.features, size, index, fileName);
+    var layer = _convertGeoJsonToLayer(geoJsonData.features, index, fileName);
     layers.add(layer);
     _updateGlobalCenter(layer);
     notifyListeners();
@@ -71,7 +60,7 @@ class GeoJsonViewModel extends ChangeNotifier {
     }
   }
 
-  GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, Size size, int index, String name) {
+  GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, int index, String name) {
     List<List<Offset>> polygons = [];
     List<List<Offset>> lines = [];
     List<Offset> points = [];
@@ -81,26 +70,26 @@ class GeoJsonViewModel extends ChangeNotifier {
       var geometry = feature.geometry;
       if (geometry is GeoPolygon) {
         for (var ring in geometry.coordinates) {
-          polygons.add(_convertToPixels(ring, size));
+          polygons.add(_convertToPixels(ring));
           allCoordinates.addAll(ring);
         }
       } else if (geometry is GeoMultiPolygon) {
         for (var polygon in geometry.polygons) {
           for (var ring in polygon.coordinates) {
-            polygons.add(_convertToPixels(ring, size));
+            polygons.add(_convertToPixels(ring));
             allCoordinates.addAll(ring);
           }
         }
       } else if (geometry is GeoLineString) {
-        lines.add(_convertToPixels(geometry.points, size));
+        lines.add(_convertToPixels(geometry.points));
         allCoordinates.addAll(geometry.points);
       } else if (geometry is GeoMultiLineString) {
         for (var line in geometry.lineStrings) {
-          lines.add(_convertToPixels(line.points, size));
+          lines.add(_convertToPixels(line.points));
           allCoordinates.addAll(line.points);
         }
       } else if (geometry is GeoPoint) {
-        points.add(geoToPixel(geometry.coordinates, size));
+        points.add(geoToPixel(geometry.coordinates));
         allCoordinates.add(geometry.coordinates);
       }
     }
@@ -124,13 +113,13 @@ class GeoJsonViewModel extends ChangeNotifier {
     );
   }
 
-  List<Offset> _convertToPixels(List<GeoCoordinates> coordinates, Size size) {
-    return coordinates.map((c) => geoToPixel(c, size)).toList();
+  List<Offset> _convertToPixels(List<GeoCoordinates> coordinates) {
+    return coordinates.map((c) => geoToPixel(c)).toList();
   }
 
-  Offset geoToPixel(GeoCoordinates coord, Size size) {
-    double x = (coord.longitude - worldCenterLon) + size.width / 2;
-    double y = (worldCenterLat - coord.latitude) + size.height / 2;
+  Offset geoToPixel(GeoCoordinates coord) {
+    double x = (coord.longitude - worldCenterLon);
+    double y = (worldCenterLat - coord.latitude);
     return Offset(x, y);
   }
 

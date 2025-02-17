@@ -5,8 +5,8 @@ import 'package:geoapp/presentation/dialogs/feature_dialog.dart';
 
 class GeoJsonMapViewModel {
   final List<GeoJsonLayer> layers;
-  double scale = 2.0;
-  Offset position = const Offset(-1000, -1000);
+  double scale = 3.0;
+  Offset position = const Offset(400, 400);
   final ValueNotifier<Offset?> cursorPositionNotifier = ValueNotifier(null);
 
   GeoJsonMapViewModel(this.layers);
@@ -43,7 +43,7 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
   Offset relativePosition = (tapPosition - position) / scale;
 
   for (var layer in layers.where((layer) => layer.isVisible)) {
-    // Сначала проверяем точки
+
     if (mapObject == null) {
       for (var point in layer.points) {
         if ((relativePosition - point).distance < tapTolerance) {
@@ -53,7 +53,6 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
       }
     }
 
-    // Затем проверяем линии
     if (mapObject == null) {
       for (var line in layer.lines) {
         for (int i = 0; i < line.length - 1; i++) {
@@ -66,7 +65,6 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
       }
     }
 
-    // И только потом проверяем полигоны
     if (mapObject == null) {
       for (var polygon in layer.polygons) {
         if (_isPointInsidePolygon(relativePosition, polygon)) {
