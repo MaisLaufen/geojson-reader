@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:geoapp/domain/viewmodels/map_widget_vm.dart';
 
@@ -23,7 +22,7 @@ class GeoJsonMapInfo extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Scale: ${viewModel.scale.toStringAsFixed(2)}',
+                'Приближение: ${viewModel.scale.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -32,7 +31,7 @@ class GeoJsonMapInfo extends StatelessWidget {
               ),
               Text(
                 cursorPosition != null
-                    ? 'Lat: ${cursorPosition.dx.toStringAsFixed(1)}, Lon: ${cursorPosition.dy.toStringAsFixed(1)}'
+                    ? _getCoordinates(cursorPosition)
                     : 'Cursor: N/A',
                 style: const TextStyle(
                   color: Colors.white,
@@ -45,5 +44,16 @@ class GeoJsonMapInfo extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _getCoordinates(Offset cursorPosition) {
+
+    double relativeLon = (cursorPosition.dx - viewModel.position.dx) / viewModel.scale;
+    double relativeLat = (cursorPosition.dy - viewModel.position.dy) / viewModel.scale;
+
+    double longitude = relativeLon;
+    double latitude = relativeLat;
+
+    return 'Широта: ${latitude.toStringAsFixed(5)}, Долгота: ${longitude.toStringAsFixed(5)}';
   }
 }
