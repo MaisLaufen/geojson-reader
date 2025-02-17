@@ -14,14 +14,33 @@ class GeoJsonMapInfo extends StatelessWidget {
       builder: (context, cursorPosition, child) {
         return Container(
           width: double.infinity,
-          height: 35,
-          color: Colors.black54,
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            'Scale: ${viewModel.scale.toStringAsFixed(2)} | '
-            '${cursorPosition != null ? 'Lat: ${cursorPosition.dx.toStringAsFixed(1)}, Lon: ${cursorPosition.dy.toStringAsFixed(1)}' : 'Cursor: N/A'}',
-            style: const TextStyle(color: Colors.white),
-            textAlign: TextAlign.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(162, 0, 0, 0),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Scale: ${viewModel.scale.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                cursorPosition != null
+                    ? 'Lat: ${cursorPosition.dx.toStringAsFixed(1)}, Lon: ${cursorPosition.dy.toStringAsFixed(1)}'
+                    : 'Cursor: N/A',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
         );
       },

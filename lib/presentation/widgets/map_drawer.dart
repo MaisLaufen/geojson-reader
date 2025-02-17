@@ -15,16 +15,16 @@ class MapDrawer extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint polygonPaint = Paint()
-      ..color = const Color.fromARGB(255, 47, 137, 255).withAlpha(50)
+      ..color = const Color.fromARGB(153, 64, 142, 210)
       ..style = PaintingStyle.fill;
 
     final Paint linePaint = Paint()
-      ..color = Colors.red
+      ..color = const Color(0xFFFFC740)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
     final Paint pointPaint = Paint()
-      ..color = Colors.green
+      ..color = const Color(0xFFF60018)
       ..style = PaintingStyle.fill;
 
     for (var layer in layers) {
