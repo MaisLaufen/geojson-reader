@@ -75,18 +75,29 @@ class GeoJsonViewModel extends ChangeNotifier {
   }
   void moveLayerUp(int index) {
     if (index > 0) {
-      GeoJsonLayer layer = layers.removeAt(index);
-      layers.insert(index - 1, layer);
-      notifyListeners();
+      var temp = layers[index];
+    layers[index] = layers[index - 1];
+    layers[index - 1] = temp;
+
+    // Меняем индексы внутри объектов, чтобы они были согласованы
+    layers[index].index = index;
+    layers[index - 1].index = index - 1;
+
+    notifyListeners();
     }
   }
 
   void moveLayerDown(int index) {
-    if (index < layers.length - 1) {
-      GeoJsonLayer layer = layers.removeAt(index);
-      layers.insert(index + 1, layer);
-      notifyListeners();
-    }
+if (index < layers.length - 1) {
+    var temp = layers[index];
+    layers[index] = layers[index + 1];
+    layers[index + 1] = temp;
+
+    layers[index].index = index;
+    layers[index + 1].index = index + 1;
+
+    notifyListeners();
+  }
   }
 
   bool isTopLayer(int index) {

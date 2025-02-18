@@ -13,8 +13,7 @@ class GeoJsonMapViewModel {
 
 void onScroll(double scrollDelta, Offset cursorPosition) {
     double zoomFactor = scrollDelta > 0 ? 0.9 : 1.1;
-    double newScale = (scale * zoomFactor);//.clamp(0.001, 100.0);
-    // Здесь можно убрать clamp 
+    double newScale = (scale * zoomFactor);
 
     // Вычисляем сдвиг
     double dx = cursorPosition.dx - position.dx;

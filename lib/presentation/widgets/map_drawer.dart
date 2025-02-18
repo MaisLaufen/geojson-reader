@@ -14,8 +14,9 @@ class MapDrawer extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Сортируем слои в порядке убывания индекса (чтобы верхние рисовались последними)
     List<GeoJsonLayer> sortedLayers = List.from(layers);
-    sortedLayers.sort((a, b) => a.index.compareTo(b.index));
+    sortedLayers.sort((a, b) => b.index.compareTo(a.index)); // Изменено: теперь по убыванию
 
     final Paint polygonPaint = Paint()
       ..color = const Color.fromARGB(153, 64, 142, 210)
@@ -32,6 +33,7 @@ class MapDrawer extends CustomPainter {
 
     for (var layer in sortedLayers) {
       if (layer.isVisible) {
+        // Отрисовка полигонов
         for (var polygon in layer.polygons) {
           final path = Path();
           for (int i = 0; i < polygon.coordinates.length; i++) {
@@ -46,6 +48,7 @@ class MapDrawer extends CustomPainter {
           canvas.drawPath(path, polygonPaint);
         }
 
+        // Отрисовка линий
         for (var line in layer.lines) {
           for (int i = 0; i < line.coordinates.length - 1; i++) {
             final start = (line.coordinates[i] * scale) + position;
@@ -54,6 +57,7 @@ class MapDrawer extends CustomPainter {
           }
         }
 
+        // Отрисовка точек
         for (var point in layer.points) {
           final transformedPoint = (point.coordinates * scale) + position;
           canvas.drawCircle(transformedPoint, 2.0, pointPaint);
