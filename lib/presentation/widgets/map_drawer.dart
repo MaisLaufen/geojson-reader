@@ -34,8 +34,8 @@ class MapDrawer extends CustomPainter {
       if (layer.isVisible) {
         for (var polygon in layer.polygons) {
           final path = Path();
-          for (int i = 0; i < polygon.length; i++) {
-            final transformedPoint = (polygon[i] * scale) + position;
+          for (int i = 0; i < polygon.coordinates.length; i++) {
+            final transformedPoint = (polygon.coordinates[i] * scale) + position;
             if (i == 0) {
               path.moveTo(transformedPoint.dx, transformedPoint.dy);
             } else {
@@ -47,15 +47,15 @@ class MapDrawer extends CustomPainter {
         }
 
         for (var line in layer.lines) {
-          for (int i = 0; i < line.length - 1; i++) {
-            final start = (line[i] * scale) + position;
-            final end = (line[i + 1] * scale) + position;
+          for (int i = 0; i < line.coordinates.length - 1; i++) {
+            final start = (line.coordinates[i] * scale) + position;
+            final end = (line.coordinates[i + 1] * scale) + position;
             canvas.drawLine(start, end, linePaint);
           }
         }
 
         for (var point in layer.points) {
-          final transformedPoint = (point * scale) + position;
+          final transformedPoint = (point.coordinates * scale) + position;
           canvas.drawCircle(transformedPoint, 2.0, pointPaint);
         }
       }

@@ -46,7 +46,7 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
 
     if (mapObject == null) {
       for (var point in layer.points) {
-        if ((relativePosition - point).distance < tapTolerance) {
+        if ((relativePosition - point.coordinates).distance < tapTolerance) {
           mapObject = MapObject(type: "Point", data: point);
           break;
         }
@@ -55,8 +55,8 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
 
     if (mapObject == null) {
       for (var line in layer.lines) {
-        for (int i = 0; i < line.length - 1; i++) {
-          if (_isPointNearLine(relativePosition, line[i], line[i + 1], tapTolerance)) {
+        for (int i = 0; i < line.coordinates.length - 1; i++) {
+          if (_isPointNearLine(relativePosition, line.coordinates[i], line.coordinates[i + 1], tapTolerance)) {
             mapObject = MapObject(type: "LineString", data: line);
             break;
           }
@@ -67,7 +67,7 @@ void detectFeatureAt(Offset tapPosition, BuildContext context) {
 
     if (mapObject == null) {
       for (var polygon in layer.polygons) {
-        if (_isPointInsidePolygon(relativePosition, polygon)) {
+        if (_isPointInsidePolygon(relativePosition, polygon.coordinates)) {
           mapObject = MapObject(type: "Polygon", data: polygon);
           break;
         }

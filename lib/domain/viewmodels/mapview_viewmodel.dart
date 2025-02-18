@@ -9,6 +9,9 @@ import 'package:geoapp/data/models/geomultipolygon.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
 import 'package:geoapp/data/models/point.dart';
 import 'package:geoapp/domain/entities/map_layer.dart';
+import 'package:geoapp/domain/entities/map_line.dart';
+import 'package:geoapp/domain/entities/map_point.dart';
+import 'package:geoapp/domain/entities/map_polygon.dart';
 import 'package:geoapp/domain/utils/geojson_loader.dart';
 import 'package:geoapp/presentation/dialogs/rename_layer_dialog.dart';
 
@@ -31,11 +34,11 @@ class GeoJsonViewModel extends ChangeNotifier {
         errorMessage.value = "Выбранный файл не является GeoJSON.";
         return;
       }
-      await loadGeoJson(filePath);
+      await _loadGeoJson(filePath);
     }
   }
 
-  Future<void> loadGeoJson(String filePath) async {
+  Future<void> _loadGeoJson(String filePath) async {
     GeoJsonData geoJsonData = await GeoJsonLoader.loadFromFile(filePath);
     int lastSlashIndex = filePath.lastIndexOf("\\");
     String fileNameWithExtension = filePath.substring(lastSlashIndex + 1);
@@ -94,58 +97,60 @@ class GeoJsonViewModel extends ChangeNotifier {
     return index == layers.length - 1;
   }
 
-  GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, int index, String name) {
-    List<List<Offset>> polygons = [];
-    List<List<Offset>> lines = [];
-    List<Offset> points = [];
-    List<GeoCoordinates> allCoordinates = [];
+ GeoJsonLayer _convertGeoJsonToLayer(List<GeoFeature> features, int index, String name) {
+  List<MapPolygon> polygons = [];
+  List<MapLine> lines = [];
+  List<MapPoint> points = [];
+  List<GeoCoordinates> allCoordinates = [];
 
-    for (var feature in features) {
-      var geometry = feature.geometry;
-      if (geometry is GeoPolygon) {
-        for (var ring in geometry.coordinates) {
-          polygons.add(_convertToPixels(ring));
+  for (var feature in features) {
+    var geometry = feature.geometry;
+    String featureName = feature.properties['name'] ?? 'Unnamed';
+
+    if (geometry is GeoPolygon) {
+      for (var ring in geometry.coordinates) {
+        polygons.add(MapPolygon(coordinates: _convertToPixels(ring), name: featureName));
+        allCoordinates.addAll(ring);
+      }
+    } else if (geometry is GeoMultiPolygon) {
+      for (var polygon in geometry.polygons) {
+        for (var ring in polygon.coordinates) {
+          polygons.add(MapPolygon(coordinates: _convertToPixels(ring), name: featureName));
           allCoordinates.addAll(ring);
         }
-      } else if (geometry is GeoMultiPolygon) {
-        for (var polygon in geometry.polygons) {
-          for (var ring in polygon.coordinates) {
-            polygons.add(_convertToPixels(ring));
-            allCoordinates.addAll(ring);
-          }
-        }
-      } else if (geometry is GeoLineString) {
-        lines.add(_convertToPixels(geometry.points));
-        allCoordinates.addAll(geometry.points);
-      } else if (geometry is GeoMultiLineString) {
-        for (var line in geometry.lineStrings) {
-          lines.add(_convertToPixels(line.points));
-          allCoordinates.addAll(line.points);
-        }
-      } else if (geometry is GeoPoint) {
-        points.add(geoToPixel(geometry.coordinates));
-        allCoordinates.add(geometry.coordinates);
       }
+    } else if (geometry is GeoLineString) {
+      lines.add(MapLine(coordinates: _convertToPixels(geometry.points), name: featureName));
+      allCoordinates.addAll(geometry.points);
+    } else if (geometry is GeoMultiLineString) {
+      for (var line in geometry.lineStrings) {
+        lines.add(MapLine(coordinates: _convertToPixels(line.points), name: featureName));
+        allCoordinates.addAll(line.points);
+      }
+    } else if (geometry is GeoPoint) {
+      points.add(MapPoint(coordinates: geoToPixel(geometry.coordinates), name: featureName));
+      allCoordinates.add(geometry.coordinates);
     }
-
-    if (allCoordinates.isEmpty) return GeoJsonLayer(polygons: polygons, lines: lines, points: points, centerLon: 0, centerLat: 0, maxDelta: 1, index: index, name: name);
-
-    double tempCenterLon = allCoordinates.map((c) => c.longitude).reduce((a, b) => a + b) / allCoordinates.length;
-    double tempCenterLat = allCoordinates.map((c) => c.latitude).reduce((a, b) => a + b) / allCoordinates.length;
-    double tempMaxDelta = allCoordinates.map((c) => (c.longitude - tempCenterLon).abs().clamp(0.0, (c.latitude - tempCenterLat).abs())).reduce((a, b) => a > b ? a : b);
-    if (tempMaxDelta == 0) tempMaxDelta = 1.0;
-
-    return GeoJsonLayer(
-      polygons: polygons,
-      lines: lines,
-      points: points,
-      centerLon: tempCenterLon,
-      centerLat: tempCenterLat,
-      maxDelta: tempMaxDelta,
-      index: index,
-      name: name,
-    );
   }
+
+  if (allCoordinates.isEmpty) return GeoJsonLayer(polygons: polygons, lines: lines, points: points, centerLon: 0, centerLat: 0, maxDelta: 1, index: index, name: name);
+
+  double tempCenterLon = allCoordinates.map((c) => c.longitude).reduce((a, b) => a + b) / allCoordinates.length;
+  double tempCenterLat = allCoordinates.map((c) => c.latitude).reduce((a, b) => a + b) / allCoordinates.length;
+  double tempMaxDelta = allCoordinates.map((c) => (c.longitude - tempCenterLon).abs().clamp(0.0, (c.latitude - tempCenterLat).abs())).reduce((a, b) => a > b ? a : b);
+  if (tempMaxDelta == 0) tempMaxDelta = 1.0;
+
+  return GeoJsonLayer(
+    polygons: polygons,
+    lines: lines,
+    points: points,
+    centerLon: tempCenterLon,
+    centerLat: tempCenterLat,
+    maxDelta: tempMaxDelta,
+    index: index,
+    name: name,
+  );
+}
 
   List<Offset> _convertToPixels(List<GeoCoordinates> coordinates) {
     return coordinates.map((c) => geoToPixel(c)).toList();

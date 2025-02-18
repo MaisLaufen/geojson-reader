@@ -17,7 +17,6 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
     super.initState();
 
     final viewModel = Provider.of<GeoJsonViewModel>(context, listen: false);
-    viewModel.loadGeoJson('lib\\test_data\\world.geojson');
 
     viewModel.errorMessage.addListener(() {
       if (viewModel.errorMessage.value != null) {
