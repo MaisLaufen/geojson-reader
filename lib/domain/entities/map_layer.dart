@@ -1,9 +1,11 @@
-import 'dart:ui';
+import 'package:geoapp/domain/entities/map_line.dart';
+import 'package:geoapp/domain/entities/map_point.dart';
+import 'package:geoapp/domain/entities/map_polygon.dart';
 
 class GeoJsonLayer {
-  List<List<Offset>> polygons = [];
-  List<List<Offset>> lines = [];
-  List<Offset> points = [];
+  List<MapPolygon> polygons = [];
+  List<MapLine> lines = [];
+  List<MapPoint> points = [];
   int index;
   bool isVisible;
   String name = "Unnamed layer";
