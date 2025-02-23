@@ -51,6 +51,7 @@ if (event is PointerScrollEvent) {
                     size: Size.infinite,
                     painter: MapDrawer(
                       layers: widget.layers,
+                      selectedObjects: Set.from(_viewModel.selectedObjects),
                       scale: _viewModel.scale,
                       position: _viewModel.position,
                     ),
