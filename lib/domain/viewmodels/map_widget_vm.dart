@@ -3,13 +3,27 @@ import 'package:geoapp/domain/entities/map_layer.dart';
 import 'package:geoapp/domain/entities/map_object.dart';
 import 'package:geoapp/presentation/dialogs/feature_dialog.dart';
 
-class GeoJsonMapViewModel {
+class GeoJsonMapViewModel extends ChangeNotifier {
   final List<GeoJsonLayer> layers;
   double scale = 3.0;
   Offset position = const Offset(400, 400);
   final ValueNotifier<Offset?> cursorPositionNotifier = ValueNotifier(null);
 
+  final Set<MapObject> selectedObjects = {};
+
   GeoJsonMapViewModel(this.layers);
+
+void toggleFeatureSelection(MapObject mapObject) {
+  if (!selectedObjects.remove(mapObject)) {
+    selectedObjects.add(mapObject);
+  }
+  notifyListeners();
+}
+
+    void clearSelection() {
+    selectedObjects.clear();
+    notifyListeners();
+  }
 
 void onScroll(double scrollDelta, Offset cursorPosition) {
     double zoomFactor = scrollDelta > 0 ? 0.9 : 1.1;
@@ -38,43 +52,44 @@ void onScroll(double scrollDelta, Offset cursorPosition) {
 
 void detectFeatureAt(Offset tapPosition, BuildContext context) {
   double tapTolerance = 4 / scale;
-  MapObject? mapObject;
   Offset relativePosition = (tapPosition - position) / scale;
+  MapObject? detectedObject;
 
   for (var layer in layers.where((layer) => layer.isVisible)) {
-
-    if (mapObject == null) {
+    if (detectedObject == null) {
       for (var point in layer.points) {
         if ((relativePosition - point.coordinates).distance < tapTolerance) {
-          mapObject = MapObject(type: "Point", data: point);
+          detectedObject = MapObject(type: "Point", data: point);
           break;
         }
       }
     }
 
-    if (mapObject == null) {
+    if (detectedObject == null) {
       for (var line in layer.lines) {
         for (int i = 0; i < line.coordinates.length - 1; i++) {
           if (_isPointNearLine(relativePosition, line.coordinates[i], line.coordinates[i + 1], tapTolerance)) {
-            mapObject = MapObject(type: "LineString", data: line);
+            detectedObject = MapObject(type: "LineString", data: line);
             break;
           }
         }
-        if (mapObject != null) break;
+        if (detectedObject != null) break;
       }
     }
 
-    if (mapObject == null) {
+    if (detectedObject == null) {
       for (var polygon in layer.polygons) {
         if (_isPointInsidePolygon(relativePosition, polygon.coordinates)) {
-          mapObject = MapObject(type: "Polygon", data: polygon);
+          detectedObject = MapObject(type: "Polygon", data: polygon);
           break;
         }
       }
     }
 
-    if (mapObject != null) {
-      _showFeatureDialog(context, mapObject);
+    if (detectedObject != null) {
+      // Проверяем, есть ли уже этот объект в selectedObjects
+      var existingObject = selectedObjects.lookup(detectedObject) ?? detectedObject;
+      toggleFeatureSelection(existingObject);
       break;
     }
   }

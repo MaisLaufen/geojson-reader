@@ -57,7 +57,7 @@ class GeoJsonScreenState extends State<GeoJsonScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Image.network(
-              'https://media.tenor.com/xz0WA5Lg9koAAAAi/shuba-shuba-transparent.gif', // Путь к вашему GIF
+              'https://media.tenor.com/xz0WA5Lg9koAAAAi/shuba-shuba-transparent.gif',
               width: 150,
               height: 150,
             ),
