@@ -9,7 +9,7 @@ import 'package:geoapp/data/models/geometry.dart';
 import 'package:geoapp/data/models/geomultilinestring.dart';
 import 'package:geoapp/data/models/geomultipolygon.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
-import 'package:geoapp/data/models/point.dart';
+import 'package:geoapp/data/models/geopoint.dart';
 
 class GeoJsonParser {
   static GeoJsonData parse(String jsonString) {

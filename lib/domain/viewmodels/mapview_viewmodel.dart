@@ -7,7 +7,7 @@ import 'package:geoapp/data/models/geolinestring.dart';
 import 'package:geoapp/data/models/geomultilinestring.dart';
 import 'package:geoapp/data/models/geomultipolygon.dart';
 import 'package:geoapp/data/models/geopolygon.dart';
-import 'package:geoapp/data/models/point.dart';
+import 'package:geoapp/data/models/geopoint.dart';
 import 'package:geoapp/domain/entities/map_layer.dart';
 import 'package:geoapp/domain/entities/map_line.dart';
 import 'package:geoapp/domain/entities/map_point.dart';
