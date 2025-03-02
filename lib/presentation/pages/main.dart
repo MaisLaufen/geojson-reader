@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geoapp/domain/viewmodels/mapview_viewmodel.dart';
-import 'package:geoapp/presentation/widgets/geojson_painter.dart';
+import 'package:geoapp/presentation/widgets/map_gesture_detector.dart';
 import 'package:geoapp/presentation/widgets/layer_widget.dart';
 import 'package:provider/provider.dart';
 
